@@ -1,18 +1,25 @@
 import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision'
 
-// MediaPipe FaceMesh landmark indices that trace the lip boundary.
-// Outer lip contour (the visible outer edge of the mouth):
+// MediaPipe FaceMesh landmark indices that trace the lip boundary, drawn
+// from Google's canonical FACEMESH_LIPS connections. Order matters here:
+// each array must trace a single continuous loop (corner -> along one
+// edge -> corner -> along the other edge -> back to start) for the canvas
+// polygon fill to cover the whole lip rather than skipping sections.
+
+// Outer lip contour: right corner -> across the top (outer edge) -> left
+// corner -> across the bottom (outer edge) -> back to right corner.
 const OUTER_LIP_INDICES = [
-  61, 146, 91, 181, 84, 17, 314, 405, 321, 375, 291, 308, 324, 318, 402, 317,
-  14, 87, 178, 88, 95, 61,
-]
+  61, 185, 40, 39, 37, 0, 267, 269, 270, 409, 291, 375, 321, 405, 314, 17, 84,
+    181, 91, 146, 61,
+    ]
 
 // Inner lip contour (the inner edge, i.e. where the mouth opening begins) —
 // used to exclude teeth/mouth-interior from the mask so we don't tint teeth.
+// Same corner -> top -> corner -> bottom -> back-to-start ordering.
 const INNER_LIP_INDICES = [
-  78, 95, 88, 178, 87, 14, 317, 402, 318, 324, 308, 415, 310, 311, 312, 13,
-  82, 81, 80, 191, 78,
-]
+    78, 191, 80, 81, 82, 13, 312, 311, 310, 415, 308, 324, 318, 402, 317, 14,
+      87, 178, 88, 95, 78,
+      ]
 
 let landmarkerPromise = null
 
