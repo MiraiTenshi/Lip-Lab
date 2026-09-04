@@ -116,6 +116,44 @@ export function buildLipMask(landmarks, width, height, featherPx = 4) {
   return mask
 }
 
+/**
+ *  * Debug helper: draws the raw outer/inner lip polygon outlines directly
+  * onto a canvas context, so the actual detected landmark positions can be
+   * visually inspected against the photo. Not used in the normal app flow —
+    * only runs when ?debugLips=1 is in the URL.
+     */
+     export function debugDrawLipOutline(ctx, landmarks, width, height) {
+       const outerPts = OUTER_LIP_INDICES.map((idx) => ({
+           x: landmarks[idx].x * width,
+               y: landmarks[idx].y * height,
+                 }))
+                   const innerPts = INNER_LIP_INDICES.map((idx) => ({
+                       x: landmarks[idx].x * width,
+                           y: landmarks[idx].y * height,
+                             }))
+
+                               ctx.save()
+                                 ctx.lineWidth = 1.5
+                                   ctx.strokeStyle = '#00ff00'
+                                     ctx.beginPath()
+                                       outerPts.forEach((pt, i) => (i === 0 ? ctx.moveTo(pt.x, pt.y) : ctx.lineTo(pt.x, pt.y)))
+                                         ctx.stroke()
+
+                                           ctx.strokeStyle = '#00aaff'
+                                             ctx.beginPath()
+                                               innerPts.forEach((pt, i) => (i === 0 ? ctx.moveTo(pt.x, pt.y) : ctx.lineTo(pt.x, pt.y)))
+                                                 ctx.stroke()
+
+                                                   ctx.fillStyle = '#ff0000'
+                                                     outerPts.forEach((pt) => {
+                                                         ctx.beginPath()
+                                                             ctx.arc(pt.x, pt.y, 2, 0, Math.PI * 2)
+                                                                 ctx.fill()
+                                                                   })
+                                                                     ctx.restore()
+                                                                     }
+
+
 /** Convenience: bounding box of the outer lip landmarks, in pixel coords. */
 export function getLipBoundingBox(landmarks, width, height) {
   const pts = OUTER_LIP_INDICES.map((idx) => ({

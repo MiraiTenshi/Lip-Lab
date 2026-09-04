@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { detectFaceLandmarks, buildLipMask, getLipBoundingBox } from '../lib/lipDetection.js'
+import { detectFaceLandmarks, buildLipMask, getLipBoundingBox, debugDrawLipOutline } from '../lib/lipDetection.js'
 import { recolorLips, rgbToLab, classifyUndertone } from '../lib/colorScience.js'
 
 const MAX_DIMENSION = 1400 // cap decode size for performance
@@ -71,7 +71,7 @@ export default function PhotoStage({
             n > 0 ? rgbToLab([sumR / n, sumG / n, sumB / n]) : [55, 25, 12]
           const undertone = classifyUndertone(naturalLab)
 
-          setLipData({ mask, naturalLab, undertone, boundingBox })
+          setLipData({ mask, naturalLab, undertone, boundingBox, landmarks })
           setDetectionState('done')
         } catch (err) {
           console.error('Face detection failed:', err)
@@ -101,13 +101,19 @@ export default function PhotoStage({
     }
 
     const sourceCtx = personPhoto.canvas.getContext('2d')
-    const sourceImageData = sourceCtx.getImageData(0, 0, personPhoto.width, personPhoto.height)
-    const recolored = recolorLips(sourceImageData, lipData.mask, selectedProduct.lab, {
-      intensity,
-      glossPreserve: 0.35,
-    })
-    ctx.putImageData(recolored, 0, 0)
-  }, [personPhoto, lipData, selectedProduct, intensity])
+        const sourceImageData = sourceCtx.getImageData(0, 0, personPhoto.width, personPhoto.height)
+            const recolored = recolorLips(sourceImageData, lipData.mask, selectedProduct.lab, {
+                  intensity,
+                        glossPreserve: 0.35,
+                            })
+                                ctx.putImageData(recolored, 0, 0)
+
+                                    // Debug: append ?debugLips=1 to the URL to overlay the raw detected
+                                        // landmark points/outline on top of the result.
+                                            if (new URLSearchParams(window.location.search).get('debugLips') === '1' && lipData.landmarks) {
+                                                  debugDrawLipOutline(ctx, lipData.landmarks, personPhoto.width, personPhoto.height)
+                                                      }
+                                                        }, [personPhoto, lipData, selectedProduct, intensity])
 
   const handleFileChange = (e) => {
     const file = e.target.files?.[0]
