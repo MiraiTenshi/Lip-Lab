@@ -1,0 +1,263 @@
+// ---------------------------------------------------------------------------
+// Color science core.
+//
+// Everything here works in CIE LAB space rather than raw RGB. RGB mixes light
+// the way a screen emits it, not the way a pigment sits on skin — blending
+// two RGB values head-on gives you a muddy average, not a plausible lipstick.
+// LAB separates *lightness* (L) from *hue+chroma* (a/b), which is what lets
+// us keep a person's natural lip shading (highlights, the cupid's bow shadow,
+// texture) while swapping in a product's actual color.
+// ---------------------------------------------------------------------------
+
+// --- sRGB <-> Linear RGB -----------------------------------------------------
+
+function srgbToLinear(c) {
+  c /= 255
+  return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)
+}
+
+function linearToSrgb(c) {
+  const v = c <= 0.0031308 ? c * 12.92 : 1.055 * Math.pow(c, 1 / 2.4) - 0.055
+  return Math.max(0, Math.min(255, Math.round(v * 255)))
+}
+
+// --- Linear RGB <-> XYZ (D65) -----------------------------------------------
+
+const RGB_TO_XYZ = [
+  [0.4124564, 0.3575761, 0.1804375],
+  [0.2126729, 0.7151522, 0.072175],
+  [0.0193339, 0.119192, 0.9503041],
+]
+const XYZ_TO_RGB = [
+  [3.2404542, -1.5371385, -0.4985314],
+  [-0.969266, 1.8760108, 0.041556],
+  [0.0556434, -0.2040259, 1.0572252],
+]
+
+// D65 reference white
+const REF_X = 0.95047
+const REF_Y = 1.0
+const REF_Z = 1.08883
+
+function rgbToXyz([r, g, b]) {
+  const lr = srgbToLinear(r)
+  const lg = srgbToLinear(g)
+  const lb = srgbToLinear(b)
+  return [
+    RGB_TO_XYZ[0][0] * lr + RGB_TO_XYZ[0][1] * lg + RGB_TO_XYZ[0][2] * lb,
+    RGB_TO_XYZ[1][0] * lr + RGB_TO_XYZ[1][1] * lg + RGB_TO_XYZ[1][2] * lb,
+    RGB_TO_XYZ[2][0] * lr + RGB_TO_XYZ[2][1] * lg + RGB_TO_XYZ[2][2] * lb,
+  ]
+}
+
+function xyzToRgb([x, y, z]) {
+  const r = XYZ_TO_RGB[0][0] * x + XYZ_TO_RGB[0][1] * y + XYZ_TO_RGB[0][2] * z
+  const g = XYZ_TO_RGB[1][0] * x + XYZ_TO_RGB[1][1] * y + XYZ_TO_RGB[1][2] * z
+  const b = XYZ_TO_RGB[2][0] * x + XYZ_TO_RGB[2][1] * y + XYZ_TO_RGB[2][2] * z
+  return [linearToSrgb(r), linearToSrgb(g), linearToSrgb(b)]
+}
+
+// --- XYZ <-> LAB -------------------------------------------------------------
+
+function fLab(t) {
+  const d = 6 / 29
+  return t > d * d * d ? Math.cbrt(t) : t / (3 * d * d) + 4 / 29
+}
+
+function fLabInv(t) {
+  const d = 6 / 29
+  return t > d ? t * t * t : 3 * d * d * (t - 4 / 29)
+}
+
+export function rgbToLab([r, g, b]) {
+  const [x, y, z] = rgbToXyz([r, g, b])
+  const fx = fLab(x / REF_X)
+  const fy = fLab(y / REF_Y)
+  const fz = fLab(z / REF_Z)
+  return [116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz)]
+}
+
+export function labToRgb([L, a, b]) {
+  const fy = (L + 16) / 116
+  const fx = fy + a / 500
+  const fz = fy - b / 200
+  const x = fLabInv(fx) * REF_X
+  const y = fLabInv(fy) * REF_Y
+  const z = fLabInv(fz) * REF_Z
+  return xyzToRgb([x, y, z])
+}
+
+// --- Undertone classification ------------------------------------------------
+//
+// Undertone is estimated from the hue angle of the a/b vector: redder+more
+// yellow (a>0, b leaning positive, hue angle roughly 15-55deg) reads warm;
+// redder+more blue/pink (b near zero or negative) reads cool. This is a
+// simplification of real skin-tone science but works well for lip pixels,
+// which sit in a narrow hue band to begin with.
+
+export function classifyUndertone(labColor) {
+  const [, a, b] = labColor
+  const hueAngle = (Math.atan2(b, a) * 180) / Math.PI
+  if (hueAngle > 35) return 'warm'
+  if (hueAngle < 15) return 'cool'
+  return 'neutral'
+}
+
+// --- Product color extraction ------------------------------------------------
+
+/**
+ * Given raw RGBA pixel data (Uint8ClampedArray) of a *cropped* product photo
+ * that shows lips wearing the product, extract a representative LAB color.
+ *
+ * Strategy: sample pixels in a central band (avoiding edges/background),
+ * filter to plausible "lip pixel" hues (reddish/pink/nude range), then take
+ * the median in LAB space (median is more robust to specular highlights and
+ * stray background pixels than a mean).
+ */
+export function extractDominantLabColor(imageData, opts = {}) {
+  const { width, height, data } = imageData
+  const samples = []
+
+  const xStart = Math.floor(width * (opts.xStart ?? 0.25))
+  const xEnd = Math.floor(width * (opts.xEnd ?? 0.75))
+  const yStart = Math.floor(height * (opts.yStart ?? 0.35))
+  const yEnd = Math.floor(height * (opts.yEnd ?? 0.75))
+
+  for (let y = yStart; y < yEnd; y += 2) {
+    for (let x = xStart; x < xEnd; x += 2) {
+      const i = (y * width + x) * 4
+      const r = data[i]
+      const g = data[i + 1]
+      const b = data[i + 2]
+      const alpha = data[i + 3]
+      if (alpha < 200) continue
+
+      // Reject near-white/near-black/near-gray pixels (likely background,
+      // studio lighting blowouts, or shadow, not the product itself)
+      const max = Math.max(r, g, b)
+      const min = Math.min(r, g, b)
+      const lightness = (max + min) / 2
+      const sat = max === min ? 0 : (max - min) / (255 - Math.abs(2 * lightness - 255))
+      if (lightness > 240 || lightness < 15) continue
+      if (sat < 0.12) continue
+
+      samples.push(rgbToLab([r, g, b]))
+    }
+  }
+
+  if (samples.length === 0) {
+    // Fallback: just average the whole center crop without filtering
+    for (let y = yStart; y < yEnd; y += 3) {
+      for (let x = xStart; x < xEnd; x += 3) {
+        const i = (y * width + x) * 4
+        samples.push(rgbToLab([data[i], data[i + 1], data[i + 2]]))
+      }
+    }
+  }
+
+  samples.sort((s1, s2) => s1[0] - s2[0])
+  const median = samples[Math.floor(samples.length / 2)] || [50, 20, 10]
+  return median
+}
+
+// --- Lip recoloring ----------------------------------------------------------
+
+/**
+ * Recolor a person's lips using their natural lightness/shading, the
+ * product's hue+chroma, and undertone-aware harmonization.
+ *
+ * @param {ImageData} personImageData - full photo pixel data (will be copied, not mutated)
+ * @param {Float32Array} lipMask - same width*height, values 0..1 (soft mask, 1 = fully lip)
+ * @param {[number,number,number]} productLab - product's representative LAB color
+ * @param {object} opts
+ * @param {number} opts.intensity - 0..1, how strongly to apply product color (product "opacity")
+ * @param {number} opts.glossPreserve - 0..1, how much to preserve bright specular highlights as white/light rather than tinting them fully
+ * @returns {ImageData} new ImageData with lips recolored
+ */
+export function recolorLips(personImageData, lipMask, productLab, opts = {}) {
+  const { width, height, data } = personImageData
+  const intensity = opts.intensity ?? 0.85
+  const glossPreserve = opts.glossPreserve ?? 0.35
+
+  const out = new ImageData(new Uint8ClampedArray(data), width, height)
+  const outData = out.data
+
+  // First pass: find the median natural lip LAB (for undertone + reference midtone)
+  let sumL = 0,
+    count = 0
+  const labCache = new Array(width * height)
+  for (let p = 0; p < width * height; p++) {
+    const m = lipMask[p]
+    if (m < 0.15) continue
+    const i = p * 4
+    const lab = rgbToLab([data[i], data[i + 1], data[i + 2]])
+    labCache[p] = lab
+    sumL += lab[0]
+    count++
+  }
+  const naturalLabAvg = count > 0 ? sumL / count : 50
+  const midtoneL = naturalLabAvg
+
+  const [prodL, prodA, prodB] = productLab
+  const personUndertone = (() => {
+    // Sample a rough undertone estimate from natural lip pixels
+    let aSum = 0,
+      bSum = 0,
+      n = 0
+    for (let p = 0; p < width * height; p++) {
+      if (lipMask[p] > 0.5 && labCache[p]) {
+        aSum += labCache[p][1]
+        bSum += labCache[p][2]
+        n++
+      }
+    }
+    if (n === 0) return 'neutral'
+    return classifyUndertone([50, aSum / n, bSum / n])
+  })()
+
+  // Undertone harmonization: nudge product hue slightly toward the person's
+  // undertone rather than fighting it. This is subtle by design (max ~8deg
+  // hue rotation) — real MUA color-correction, not a filter.
+  const hueShiftDeg = personUndertone === 'warm' ? 6 : personUndertone === 'cool' ? -6 : 0
+  const theta = (hueShiftDeg * Math.PI) / 180
+  const adjA = prodA * Math.cos(theta) - prodB * Math.sin(theta)
+  const adjB = prodA * Math.sin(theta) + prodB * Math.cos(theta)
+
+  for (let p = 0; p < width * height; p++) {
+    const m = lipMask[p]
+    if (m <= 0.01) continue
+    const i = p * 4
+    const naturalLab = labCache[p] || rgbToLab([data[i], data[i + 1], data[i + 2]])
+    const [nL, nA, nB] = naturalLab
+
+    // Preserve specular highlights: pixels much brighter than the lip
+    // midtone are glossy highlights — pull them back toward natural color
+    // rather than fully tinting, so the lips keep dimensional shine.
+    const highlightFactor = Math.max(0, Math.min(1, (nL - midtoneL) / 35))
+    const highlightPreserve = highlightFactor * glossPreserve
+
+    // Target lightness: keep the person's own shading almost entirely (this
+    // is what makes the result look like the product sitting on *their*
+    // lips, not a cutout). Nudge very slightly toward the product's own
+    // reference lightness so very dark or very light products still read.
+    const targetL = nL * 0.88 + prodL * 0.12
+
+    // Chroma modulation: pixels in shadow/crease areas (low L relative to
+    // midtone) get slightly reduced saturation, mimicking how pigment
+    // gathers less light in recesses — avoids a flat "sticker" look.
+    const shadowFactor = Math.max(0.55, Math.min(1, 1 - (midtoneL - nL) / 120))
+
+    const blendStrength = intensity * (1 - highlightPreserve) * (1 - m * 0) * m
+    const finalL = nL * (1 - blendStrength) + targetL * blendStrength
+    const finalA = nA * (1 - blendStrength) + adjA * shadowFactor * blendStrength
+    const finalB = nB * (1 - blendStrength) + adjB * shadowFactor * blendStrength
+
+    const [r, g, b] = labToRgb([finalL, finalA, finalB])
+    outData[i] = r
+    outData[i + 1] = g
+    outData[i + 2] = b
+    outData[i + 3] = data[i + 3]
+  }
+
+  return out
+}
