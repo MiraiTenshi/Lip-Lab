@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import Header from './components/Header.jsx'
 import PhotoStage from './components/PhotoStage.jsx'
-import ShadeRail from './components/ShadeRail.jsx'
+import ShadePicker from './components/ShadePicker.jsx'
 import ReadoutStrip from './components/ReadoutStrip.jsx'
 import IntensityControl from './components/IntensityControl.jsx'
 import EmptyProductsNotice from './components/EmptyProductsNotice.jsx'
@@ -47,25 +47,21 @@ export default function App() {
             selectedProduct={selectedProduct}
             intensity={intensity}
           />
-          {lipData && (
-            <ReadoutStrip lipData={lipData} selectedProduct={selectedProduct} />
-          )}
-          {lipData && (
-            <IntensityControl intensity={intensity} setIntensity={setIntensity} />
-          )}
-        </section>
 
-        <aside className="rail-pane" aria-label="Product shades">
-          {products === null && <p className="rail-loading">Loading shade library…</p>}
-          {products !== null && products.length === 0 && <EmptyProductsNotice />}
-          {products && products.length > 0 && (
-            <ShadeRail
-              products={products}
-              selectedId={selectedId}
-              onSelect={setSelectedId}
-            />
-          )}
-        </aside>
+          <div className="controls-row">
+            {products === null && <p className="rail-loading">Loading shade library…</p>}
+            {products !== null && products.length === 0 && <EmptyProductsNotice />}
+            {products && products.length > 0 && (
+              <ShadePicker products={products} selectedId={selectedId} onSelect={setSelectedId} />
+            )}
+
+            {lipData && (
+              <IntensityControl intensity={intensity} setIntensity={setIntensity} />
+            )}
+          </div>
+
+          {lipData && <ReadoutStrip lipData={lipData} selectedProduct={selectedProduct} />}
+        </section>
       </main>
 
       <footer className="app-footer">

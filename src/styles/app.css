@@ -1,17 +1,20 @@
 /* ---------------------------------------------------------------- Shell */
 
 .app-shell {
-  min-height: 100vh;
+  min-height: 100dvh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .app-header {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 28px 40px 20px;
+  gap: 10px;
+  padding: 14px 16px 12px;
   border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
 }
 
 .app-header-mark {
@@ -19,53 +22,58 @@
   display: flex;
 }
 
+.app-header-mark svg {
+  width: 22px;
+  height: 22px;
+}
+
 .app-header h1 {
-  font-size: 22px;
+  font-size: 17px;
   letter-spacing: -0.01em;
 }
 
 .app-header-sub {
-  font-size: 13px;
+  font-size: 11.5px;
   color: var(--ink-soft);
-  margin-top: 2px;
+  margin-top: 1px;
 }
 
 .app-footer {
-  padding: 18px 40px 28px;
+  padding: 8px 16px 10px;
   border-top: 1px solid var(--line);
-  margin-top: auto;
+  flex-shrink: 0;
 }
 
 .app-footer p {
-  font-size: 12.5px;
+  font-size: 10.5px;
   color: var(--ink-soft);
   max-width: 60ch;
+  line-height: 1.4;
 }
 
 /* ------------------------------------------------------------- Workshop */
+/*
+ * Single-column, single-screen layout: photo stage takes remaining space
+ * (capped so it never pushes controls below the fold), controls row and
+ * readout strip are compact and always visible without scrolling — the
+ * whole point of the dropdown shade picker instead of a scrollable list.
+ */
 
 .workshop {
   flex: 1;
-  display: grid;
-  grid-template-columns: 1fr 320px;
-  gap: 40px;
-  padding: 32px 40px;
-  align-items: start;
-}
-
-@media (max-width: 860px) {
-  .workshop {
-    grid-template-columns: 1fr;
-    padding: 20px;
-    gap: 28px;
-  }
+  display: flex;
+  flex-direction: column;
+  padding: 10px 16px 12px;
+  min-height: 0;
 }
 
 .stage-pane {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 8px;
   min-width: 0;
+  min-height: 0;
+  flex: 1;
 }
 
 /* --------------------------------------------------------- Upload zone */
@@ -73,14 +81,15 @@
 .upload-dropzone {
   border: 1.5px dashed var(--line-strong);
   border-radius: 4px;
-  min-height: 420px;
+  flex: 1;
+  min-height: 220px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 8px;
   text-align: center;
-  padding: 40px;
+  padding: 24px;
   cursor: pointer;
   transition: border-color 0.15s ease, background-color 0.15s ease;
   background: var(--paper-dim);
@@ -94,14 +103,14 @@
 
 .upload-title {
   font-family: var(--font-display);
-  font-size: 19px;
-  margin-top: 8px;
+  font-size: 17px;
+  margin-top: 4px;
 }
 
 .upload-hint {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--ink-soft);
-  max-width: 34ch;
+  max-width: 30ch;
 }
 
 /* ------------------------------------------------------------- Canvas */
@@ -113,11 +122,20 @@
   background: var(--paper-dim);
   border: 1px solid var(--line);
   line-height: 0;
+  flex: 1;
+  min-height: 0;
+  /* Cap how tall the photo can get so it can never by itself push the
+     shade picker / intensity / readout below the viewport. */
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .stage-canvas {
   width: 100%;
-  height: auto;
+  height: 100%;
+  max-height: 100%;
+  object-fit: contain;
   display: block;
 }
 
@@ -136,11 +154,11 @@
 }
 
 .stage-overlay p {
-  font-size: 15px;
+  font-size: 14px;
 }
 
 .stage-overlay-hint {
-  font-size: 13px;
+  font-size: 12px;
   opacity: 0.8;
   max-width: 32ch;
 }
@@ -153,16 +171,16 @@
 
 .stage-reset {
   position: absolute;
-  bottom: 14px;
-  right: 14px;
+  bottom: 10px;
+  right: 10px;
 }
 
 .btn-ghost {
   background: rgba(247, 243, 239, 0.92);
   border: 1px solid var(--line-strong);
   border-radius: 3px;
-  padding: 7px 14px;
-  font-size: 13px;
+  padding: 6px 12px;
+  font-size: 12.5px;
   color: var(--ink);
   font-weight: 500;
 }
@@ -172,46 +190,64 @@
   color: var(--berry);
 }
 
+/* ------------------------------------------------------- Controls row */
+/* Shade picker + intensity slider side by side on wider screens, stacked
+   on narrow phones — always compact, never scrolling. */
+
+.controls-row {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+  flex-shrink: 0;
+}
+
+@media (max-width: 480px) {
+  .controls-row {
+    flex-direction: column;
+  }
+}
+
 /* ------------------------------------------------------------ Readout */
 
 .readout-strip {
   display: flex;
   align-items: center;
-  gap: 18px;
-  padding: 14px 18px;
+  gap: 12px;
+  padding: 8px 12px;
   background: var(--paper-dim);
   border: 1px solid var(--line);
   border-radius: 4px;
   flex-wrap: wrap;
+  flex-shrink: 0;
 }
 
 .readout-item {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
 }
 
 .readout-label {
-  font-size: 11px;
+  font-size: 9.5px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--ink-soft);
 }
 
 .readout-value {
-  font-size: 14px;
+  font-size: 12.5px;
   font-weight: 500;
 }
 
 .readout-value-swatch {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
 }
 
 .readout-dot {
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   border: 1px solid rgba(0, 0, 0, 0.15);
   flex-shrink: 0;
@@ -219,7 +255,7 @@
 
 .readout-divider {
   width: 1px;
-  height: 28px;
+  height: 22px;
   background: var(--line-strong);
 }
 
@@ -228,14 +264,20 @@
 .intensity-control {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 4px 4px;
+  gap: 10px;
+  padding: 6px 10px;
+  background: var(--paper-dim);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  flex: 1;
+  min-width: 140px;
 }
 
 .intensity-label {
-  font-size: 12.5px;
+  font-size: 11.5px;
   color: var(--ink-soft);
-  min-width: 54px;
+  min-width: 46px;
+  flex-shrink: 0;
 }
 
 .intensity-slider {
@@ -244,52 +286,107 @@
 }
 
 .intensity-value {
-  font-size: 12.5px;
+  font-size: 11.5px;
   color: var(--ink-soft);
-  min-width: 38px;
+  min-width: 34px;
   text-align: right;
   font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
 }
 
-/* -------------------------------------------------------------- Rail */
+/* ------------------------------------------------------- Shade picker */
 
-.rail-pane {
+.shade-picker {
+  position: relative;
+  flex: 1.4;
   min-width: 0;
 }
 
-.rail-heading {
-  font-size: 18px;
-  margin-bottom: 2px;
+.shade-picker-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  background: var(--paper-dim);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  text-align: left;
 }
 
-.rail-count {
-  font-size: 12.5px;
-  color: var(--ink-soft);
-  margin-bottom: 16px;
+.shade-picker-trigger:hover {
+  border-color: var(--line-strong);
 }
 
-.rail-loading {
-  font-size: 13px;
-  color: var(--ink-soft);
-}
-
-.shade-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+.shade-picker-label {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  max-height: 640px;
+  gap: 0;
+  min-width: 0;
+  flex: 1;
+}
+
+.shade-picker-name {
+  font-size: 12.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.shade-picker-hex {
+  font-size: 10px;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+  text-transform: uppercase;
+}
+
+.shade-picker-count {
+  font-size: 10.5px;
+  color: var(--ink-soft);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 1px 7px;
+  flex-shrink: 0;
+}
+
+.shade-picker-chevron {
+  flex-shrink: 0;
+  color: var(--ink-soft);
+  transition: transform 0.15s ease;
+}
+
+.shade-picker-chevron-open {
+  transform: rotate(180deg);
+}
+
+.shade-picker-list {
+  position: absolute;
+  z-index: 20;
+  bottom: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  max-height: 45vh;
   overflow-y: auto;
+  background: var(--paper);
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+  box-shadow: 0 8px 24px rgba(28, 24, 21, 0.16);
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
 }
 
 .shade-item {
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 9px 10px;
+  gap: 10px;
+  padding: 7px 8px;
   background: transparent;
   border: 1px solid transparent;
   border-radius: 4px;
@@ -306,12 +403,17 @@
 }
 
 .shade-swatch {
-  width: 30px;
-  height: 30px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
   border: 1px solid rgba(0, 0, 0, 0.15);
   flex-shrink: 0;
   box-shadow: inset 0 -3px 5px rgba(0, 0, 0, 0.18), inset 0 2px 3px rgba(255, 255, 255, 0.25);
+}
+
+.shade-swatch-sm {
+  width: 22px;
+  height: 22px;
 }
 
 .shade-info {
@@ -322,7 +424,7 @@
 }
 
 .shade-name {
-  font-size: 13.5px;
+  font-size: 12.5px;
   font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
@@ -330,10 +432,16 @@
 }
 
 .shade-hex {
-  font-size: 11.5px;
+  font-size: 10.5px;
   color: var(--ink-soft);
   font-variant-numeric: tabular-nums;
   text-transform: uppercase;
+}
+
+.rail-loading {
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  padding: 6px 0;
 }
 
 /* --------------------------------------------------------- Empty state */
@@ -343,9 +451,9 @@
 }
 
 .empty-products-hint {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--ink-soft);
-  margin-top: 8px;
+  margin-top: 6px;
   max-width: 36ch;
 }
 
@@ -353,5 +461,5 @@
   background: var(--paper-dim);
   padding: 1px 5px;
   border-radius: 3px;
-  font-size: 12.5px;
+  font-size: 11.5px;
 }
