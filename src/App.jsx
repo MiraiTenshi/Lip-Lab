@@ -12,7 +12,7 @@ const MANIFEST_URL = `${import.meta.env.BASE_URL}products/manifest.json`
 export default function App() {
   const [products, setProducts] = useState(null) // null = loading
   const [selectedId, setSelectedId] = useState(null)
-  const [intensity, setIntensity] = useState(0.85)
+  const [intensity, setIntensity] = useState(0.4)
   const [personPhoto, setPersonPhoto] = useState(null) // { element, width, height }
   const [lipData, setLipData] = useState(null) // { mask, naturalLab, undertone, boundingBox }
   const [detectionState, setDetectionState] = useState('idle') // idle | detecting | done | no-face | error
