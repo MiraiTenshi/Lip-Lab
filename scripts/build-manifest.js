@@ -82,18 +82,27 @@ function labToHex(lab) {
 }
 
 /**
- * Sample the central band of the image (avoiding edges/background), filter
- * to plausible "product on lips" pixels (saturated, mid-lightness), and
- * take the LAB median — robust to specular highlights and stray background.
+ * Sample almost the whole frame (small margin only — a fixed central "lips
+ * are here" box breaks badly on close-up product photos where lips fill
+ * nearly the entire frame). Reject near-gray/background pixels by
+ * saturation, then take the darkest 20th percentile of what's left rather
+ * than the median of everything: glossy highlights and the soft skin-to-
+ * lip transition are pale but still "saturated enough," and on many photos
+ * those pale pixels outnumber the fuller, truer-color pixels where the
+ * product sits thickest — a plain median gets pulled toward that pale
+ * cluster, which is why browns and reds were both drifting toward a shared
+ * pale pink/orange. The darkest, most pigment-dense pixels are the most
+ * representative of the product's true color.
  */
 function extractDominantLab({ data, info }) {
   const { width, height, channels } = info
-  const samples = []
-  const xStart = Math.floor(width * 0.25)
-  const xEnd = Math.floor(width * 0.75)
-  const yStart = Math.floor(height * 0.35)
-  const yEnd = Math.floor(height * 0.75)
+  const margin = 0.08
+  const xStart = Math.floor(width * margin)
+  const xEnd = Math.floor(width * (1 - margin))
+  const yStart = Math.floor(height * margin)
+  const yEnd = Math.floor(height * (1 - margin))
 
+  const samples = []
   for (let y = yStart; y < yEnd; y += 2) {
     for (let x = xStart; x < xEnd; x += 2) {
       const i = (y * width + x) * channels
@@ -104,21 +113,28 @@ function extractDominantLab({ data, info }) {
       const min = Math.min(r, g, b)
       const lightness = (max + min) / 2
       const sat = max === min ? 0 : (max - min) / (255 - Math.abs(2 * lightness - 255))
-      if (lightness > 240 || lightness < 15) continue
-      if (sat < 0.12) continue
-      samples.push(rgbToLab([r, g, b]))
+      if (sat < 0.15) continue
+      samples.push({ lightness, rgb: [r, g, b] })
     }
   }
+
   if (samples.length === 0) {
+    const fallback = []
     for (let y = yStart; y < yEnd; y += 3) {
       for (let x = xStart; x < xEnd; x += 3) {
         const i = (y * width + x) * channels
-        samples.push(rgbToLab([data[i], data[i + 1], data[i + 2]]))
+        fallback.push(rgbToLab([data[i], data[i + 1], data[i + 2]]))
       }
     }
+    fallback.sort((a, b) => a[0] - b[0])
+    return fallback[Math.floor(fallback.length / 2)] || [50, 20, 10]
   }
-  samples.sort((a, b) => a[0] - b[0])
-  return samples[Math.floor(samples.length / 2)] || [50, 20, 10]
+
+  samples.sort((a, b) => a.lightness - b.lightness)
+  const darkestSlice = samples.slice(0, Math.max(1, Math.floor(samples.length * 0.2)))
+  const labs = darkestSlice.map((s) => rgbToLab(s.rgb))
+  labs.sort((a, b) => a[0] - b[0])
+  return labs[Math.floor(labs.length / 2)] || [50, 20, 10]
 }
 
 async function main() {
