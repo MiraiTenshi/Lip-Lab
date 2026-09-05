@@ -50,7 +50,7 @@ export default function PhotoStage({
             setDetectionState('no-face')
             return
           }
-          const mask = buildLipMask(landmarks, width, height, Math.max(3, width * 0.003))
+          const mask = buildLipMask(landmarks, width, height, Math.max(1.5, width * 0.0012))
           const boundingBox = getLipBoundingBox(landmarks, width, height)
 
           const imageData = ctx.getImageData(0, 0, width, height)
