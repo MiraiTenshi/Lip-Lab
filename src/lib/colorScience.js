@@ -307,7 +307,9 @@ export function recolorLips(personImageData, lipMask, productLab, opts = {}) {
     // preservation (highlights stay bright, texture reads through) comes
     // from blending against nL via blendStrength below, which already
     // scales correctly with the intensity slider and mask falloff.
-    const targetL = prodL * 0.85 + nL * 0.15
+    const deviation = nL - midtoneL
+        const targetMidtone = prodL * 0.85 + midtoneL * 0.15
+            const targetL = targetMidtone + deviation * 0.9
 
     // Chroma modulation: pixels in shadow/crease areas (low L relative to
     // midtone) get slightly reduced saturation, mimicking how pigment
